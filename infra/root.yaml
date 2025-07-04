@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Root CloudFormation stack for deploying the Contact Center AI Backend.
+  This stack orchestrates the creation of the Bedrock Knowledge Base and its
+  dependencies via a nested stack. (Project: Utah)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'Utah'
+    Description: A name for the project to be used in resource naming.
+    AllowedPattern: '^[A-Za-z0-9-]+$'
+    ConstraintDescription: ProjectName can include only uppercase and lowercase letters, numbers, and hyphens.
+
+  EnvName:
+    Type: String
+    Description: Environment name (e.g., dev, staging, prod).
+    AllowedValues: ['dev', 'staging', 'prod']
+    Default: 'dev'
+
+  ArtifactsBucketName:
+    Type: String
+    Description: The S3 bucket name containing CloudFormation templates and Lambda code.
+
+  KnowledgeBaseDataBucketName:
+    Type: String
+    Description: The name of the existing S3 bucket containing documents for the Knowledge Base.
+
+Resources:
+  BedrockKnowledgeBaseStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://blog-artifacts-304598107598.s3.us-east-1.amazonaws.com/bedrock-kb.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        EnvName: !Ref EnvName
+        ArtifactsBucketName: !Ref ArtifactsBucketName
+        KnowledgeBaseBucketName: !Ref KnowledgeBaseDataBucketName
+        # You can expose more parameters from the child stack here if needed.
+        # For example, to allow changing the embedding model from the root stack:
+        # EmbedModel: 'amazon.titan-embed-text-v1'
+
+Outputs:
+  KnowledgeBaseID:
+    Description: The ID of the created Bedrock Knowledge Base.
+    Value: !GetAtt BedrockKnowledgeBaseStack.Outputs.KnowledgeBaseID
+    Export:
+      Name: !Sub "${ProjectName}-KnowledgeBaseID-${EnvName}"
+
+  OpenSearchCollectionArn:
+    Description: The ARN of the OpenSearch Serverless collection.
+    Value: !GetAtt BedrockKnowledgeBaseStack.Outputs.OpenSearchCollectionArn
+    Export:
+      Name: !Sub "${ProjectName}-OpenSearchCollectionArn-${EnvName}"
+
+  OpenSearchCollectionEndpoint:
+    Description: The endpoint for the OpenSearch Serverless collection.
+    Value: !GetAtt BedrockKnowledgeBaseStack.Outputs.OpenSearchCollectionEndpoint
+    Export:
+      Name: !Sub "${ProjectName}-OpenSearchCollectionEndpoint-${EnvName}"
